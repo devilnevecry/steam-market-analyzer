@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Главная — Steam Analyzer{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+  <div class="lg:col-span-1 bg-[#131B2E] border border-slate-800/80 rounded-md p-3">
+    <h2 class="text-xs uppercase tracking-wider text-[#94A3B8] mb-2">Добавить предмет</h2>
+    <form id="addForm" class="space-y-2">
+      <input id="inputUrl" type="text" placeholder="Ссылка Steam Market" class="w-full bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC] placeholder-[#94A3B8]" />
+      <div class="grid grid-cols-2 gap-2">
+        <input id="appid" type="number" placeholder="AppID" class="bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC]" />
+        <input id="name" type="text" placeholder="market_hash_name" class="bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC]" />
+      </div>
+      <button type="submit" class="w-full bg-[#10B981] hover:bg-[#0ea371] text-[#0B0F17] font-semibold rounded px-3 py-1.5 text-sm">Добавить</button>
+    </form>
+    <p id="addMsg" class="text-xs mt-2 text-[#94A3B8]"></p>
+  </div>
+  <div class="lg:col-span-3 bg-[#131B2E] border border-slate-800/80 rounded-md p-3">
+    <div class="flex justify-between items-center mb-2">
+      <h2 class="text-xs uppercase tracking-wider text-[#94A3B8]">Отслеживаемые предметы</h2>
+      <button id="refreshAll" class="text-xs bg-[#0B0F17] border border-slate-800/80 hover:border-slate-700 rounded px-2 py-1 text-[#94A3B8]">Обновить все</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-[#94A3B8] border-b border-slate-800/80">
+          <tr>
+            <th class="text-left py-1.5 px-2 font-medium">Предмет</th>
+            <th class="text-right py-1.5 px-2 font-medium">Lowest Sell</th>
+            <th class="text-right py-1.5 px-2 font-medium">Highest Buy</th>
+            <th class="text-right py-1.5 px-2 font-medium">Маржа %</th>
+            <th class="text-right py-1.5 px-2 font-medium">Объём 24ч</th>
+            <th class="text-left py-1.5 px-2 font-medium">Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadItems() {
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '<tr class="animate-pulse"><td colspan="7" class="py-4"><div class="h-4 bg-slate-800/80 rounded w-full"></div></td></tr>';
+  const res = await fetch('/api/items');
+  const data = await res.json();
+  tbody.innerHTML = '';
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-800/80 hover:bg-[#0B0F17]';
+    const statusColor = d.status === 'Выгодно' ? 'text-[#10B981]' : (d.status === 'Низкая ликвидность' ? 'text-[#EF4444]' : 'text-[#94A3B8]');
+    const marginColor = (d.spread_pct ?? 0) >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]';
+    tr.innerHTML = `
+      <td class="py-1.5 px-2"><a href="/items/${d.item.id}" class="hover:text-[#10B981]">${d.item.market_hash_name}</a><br><span class="text-xs text-[#94A3B8]">AppID ${d.item.appid}</span></td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.snapshot ? (d.snapshot.lowest_sell ?? '-') : '-'}</td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.snapshot ? (d.snapshot.highest_buy ?? '-') : '-'}</td>
+      <td class="text-right py-1.5 px-2 font-mono ${marginColor}">${d.spread_pct ?? '-'}</td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.snapshot && d.snapshot.volume_24h != null ? d.snapshot.volume_24h : '-'}</td>
+      <td class="py-1.5 px-2 ${statusColor}">${d.status}</td>
+      <td class="text-right py-1.5 px-2"><button data-id="${d.item.id}" class="del text-[#94A3B8] hover:text-[#EF4444] text-xs">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async () => {
+      await fetch('/api/items/' + b.dataset.id, {method:'DELETE'});
+      loadItems();
+    });
+  });
+}
+document.getElementById('addForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = document.getElementById('inputUrl').value.trim();
+  const appid = document.getElementById('appid').value;
+  const name = document.getElementById('name').value.trim();
+  const body = {};
+  if (url) body.url = url;
+  if (appid) body.appid = parseInt(appid);
+  if (name) body.market_hash_name = name;
+  const res = await fetch('/api/items', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const msg = document.getElementById('addMsg');
+  if (res.ok) { msg.textContent = 'Добавлено'; msg.className='text-xs mt-2 text-[#10B981]'; loadItems(); }
+  else { const t = await res.text(); msg.textContent = t; msg.className='text-xs mt-2 text-[#EF4444]'; }
+});
+document.getElementById('refreshAll').addEventListener('click', async () => {
+  const res = await fetch('/api/items'); const data = await res.json();
+  for (const d of data) { await fetch('/api/items/'+d.item.id+'/refresh', {method:'POST'}); }
+  loadItems();
+});
+loadItems();
+setInterval(loadItems, 30000);
+</script>
+{% endblock %}

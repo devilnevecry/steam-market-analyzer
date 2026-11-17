@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Портфель — Steam Analyzer{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+  <div class="lg:col-span-1 bg-[#131B2E] border border-slate-800/80 rounded-md p-3">
+    <h2 class="text-xs uppercase tracking-wider text-[#94A3B8] mb-2">Добавить покупку</h2>
+    <form id="pForm" class="space-y-2">
+      <input id="pItem" type="number" placeholder="Item ID" class="w-full bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC]" />
+      <input id="pPrice" type="number" step="0.01" placeholder="Цена покупки" class="w-full bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm font-mono text-[#F8FAFC]" />
+      <input id="pQty" type="number" value="1" placeholder="Кол-во" class="w-full bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC]" />
+      <input id="pNote" type="text" placeholder="Заметка" class="w-full bg-[#0B0F17] border border-slate-800/80 rounded px-2 py-1.5 text-sm text-[#F8FAFC]" />
+      <button type="submit" class="w-full bg-[#10B981] hover:bg-[#0ea371] text-[#0B0F17] font-semibold rounded px-3 py-1.5 text-sm">Добавить</button>
+    </form>
+    <p id="pMsg" class="text-xs mt-2 text-[#94A3B8]"></p>
+  </div>
+  <div class="lg:col-span-3 bg-[#131B2E] border border-slate-800/80 rounded-md p-3">
+    <h2 class="text-xs uppercase tracking-wider text-[#94A3B8] mb-2">Портфель</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-[#94A3B8] border-b border-slate-800/80">
+          <tr>
+            <th class="text-left py-1.5 px-2 font-medium">Предмет</th>
+            <th class="text-right py-1.5 px-2 font-medium">Куплено за</th>
+            <th class="text-right py-1.5 px-2 font-medium">Кол-во</th>
+            <th class="text-right py-1.5 px-2 font-medium">Текущая цена</th>
+            <th class="text-right py-1.5 px-2 font-medium">Нереализ. профит</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="portBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadPort() {
+  const res = await fetch('/api/portfolio');
+  const data = await res.json();
+  const tbody = document.getElementById('portBody');
+  tbody.innerHTML = '';
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-800/80 hover:bg-[#0B0F17]';
+    tr.innerHTML = `
+      <td class="py-1.5 px-2">${d.market_hash_name ?? d.item_id}</td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.buy_price}</td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.quantity}</td>
+      <td class="text-right py-1.5 px-2 font-mono">${d.lowest_sell ?? '-'}</td>
+      <td class="text-right py-1.5 px-2 font-mono ${(d.unrealized_profit||0) >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}">${d.unrealized_profit ?? '-'}</td>
+      <td class="text-right py-1.5 px-2"><button data-id="${d.id}" class="del text-[#94A3B8] hover:text-[#EF4444] text-xs">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async () => {
+      await fetch('/api/portfolio/' + b.dataset.id, {method:'DELETE'});
+      loadPort();
+    });
+  });
+}
+document.getElementById('pForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    item_id: parseInt(document.getElementById('pItem').value),
+    buy_price: parseFloat(document.getElementById('pPrice').value),
+    quantity: parseInt(document.getElementById('pQty').value || '1'),
+    note: document.getElementById('pNote').value
+  };
+  const res = await fetch('/api/portfolio', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const msg = document.getElementById('pMsg');
+  if (res.ok) { msg.textContent='Добавлено'; msg.className='text-xs mt-2 text-[#10B981]'; loadPort(); }
+  else { msg.textContent = await res.text(); msg.className='text-xs mt-2 text-[#EF4444]'; }
+});
+loadPort();
+</script>
+{% endblock %}

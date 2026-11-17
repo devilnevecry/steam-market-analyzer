@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23131B2E'/%3E%3Cpath d='M6 22 L12 16 L17 19 L26 10' stroke='%2310B981' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='10' r='2' fill='%2310B981'/%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background-color: #0B0F17; color: #F8FAFC; }
+    .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <nav class="bg-[#131B2E] border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex gap-6 items-center">
+      <a href="/" class="font-semibold text-sm tracking-wide text-[#F8FAFC]">STEAM ANALYZER</a>
+      <a href="/" class="text-sm text-[#94A3B8] hover:text-[#F8FAFC]">Главная</a>
+      <a href="/portfolio" class="text-sm text-[#94A3B8] hover:text-[#F8FAFC]">Портфель</a>
+    </div>
+  </nav>
+  <main class="max-w-7xl mx-auto px-4 py-4">
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
